@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Input Transfer Bank</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0A0E1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0A0E1A; --bg-1:#111827; --paper:#FAFAF8; --ink:#14161C; --ink-soft:#6B7280;
+    --line:#E7E5E1; --accent:#4F46E5; --accent-soft:#EEF0FF; --good:#059669; --bad:#DC2626;
+    --bca:#0A63C9; --bri:#00417A; --bni:#F36F21; --mandiri:#003D79; --mandiri-gold:#FDB913;
+    --bsi:#00A39D; --jago:#7C3AED;
+    --radius-lg:26px; --radius-md:16px; --radius-sm:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; min-height:100vh;
+    background:
+      radial-gradient(circle at 15% -10%, rgba(79,70,229,0.35), transparent 45%),
+      radial-gradient(circle at 100% 10%, rgba(5,150,105,0.18), transparent 40%),
+      var(--bg-0);
+    font-family:'Inter', system-ui, -apple-system, sans-serif;
+    color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior:none;
+  }
+  .page{min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px 14px 40px;}
+
+  .lock-overlay{position:fixed; inset:0; z-index:100; background:var(--bg-0); display:flex; align-items:center; justify-content:center; padding:20px;}
+  .lock-card{max-width:360px; width:100%; background:var(--paper); border-radius:var(--radius-lg); padding:30px 26px; text-align:center; box-shadow:0 30px 60px -20px rgba(0,0,0,.55);}
+  .lock-icon{width:52px; height:52px; border-radius:14px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; margin:0 auto 16px;}
+  .lock-icon svg{width:26px;height:26px;}
+  .lock-title{font-family:'Sora',sans-serif; font-weight:800; font-size:18px; margin:0 0 6px;}
+  .lock-sub{font-size:13px; color:var(--ink-soft); margin:0 0 18px; line-height:1.5;}
+  .lock-input{width:100%; border:1.5px solid var(--line); border-radius:12px; padding:13px 14px; font-size:16px; font-family:'JetBrains Mono',monospace; text-align:center; letter-spacing:1px; outline:none; margin-bottom:12px;}
+  .lock-input:focus{border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft);}
+  .lock-btn{width:100%; border:none; border-radius:12px; padding:13px; background:var(--ink); color:#fff; font-family:'Sora',sans-serif; font-weight:700; font-size:14.5px; cursor:pointer;}
+  .lock-btn:disabled{background:#D1D5DB; color:#9CA3AF;}
+  .lock-error{color:var(--bad); font-size:12.5px; margin-top:10px; min-height:16px;}
+  .lock-note{font-size:11px; color:#9CA3AF; margin-top:14px; line-height:1.5;}
+
+  .topbar{width:100%; max-width:480px; display:flex; justify-content:space-between; align-items:center; padding:6px 6px 18px; color:#EDEBFF;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:34px;height:34px;border-radius:10px; background:linear-gradient(135deg,var(--accent),#8B5CF6); display:flex;align-items:center;justify-content:center; font-family:'Sora',sans-serif;font-weight:800;font-size:15px;color:#fff; box-shadow:0 6px 16px rgba(79,70,229,.45);}
+  .brand-text{font-family:'Sora',sans-serif;font-weight:700;font-size:15px;letter-spacing:.2px;}
+  .brand-sub{font-size:11px;color:#9AA3C2;margin-top:1px;}
+  .user-badge{display:flex; align-items:center; gap:6px; font-size:10.5px; color:#9AA3C2; margin-top:4px;}
+  .user-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--good); flex-shrink:0;}
+  .user-badge .dot.offline{background:var(--bad);}
+  .user-badge button{background:none;border:none;color:#7C86AD;font-size:10.5px;text-decoration:underline;cursor:pointer;padding:0;margin-left:4px;}
+  .clock{text-align:right; font-family:'JetBrains Mono',monospace;}
+  .clock-time{font-size:16px;font-weight:700;color:#fff;}
+  .clock-date{font-size:11px;color:#9AA3C2;margin-top:2px;}
+
+  .receipt-wrap{width:100%; max-width:480px; position:relative;}
+  .receipt{background:var(--paper); border-radius:var(--radius-lg); padding:26px 22px 24px; box-shadow:0 30px 60px -20px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.04) inset; position:relative; overflow:hidden;}
+  .receipt::before{content:""; position:absolute; top:0;left:0;right:0;height:6px; background:repeating-linear-gradient(90deg, var(--accent) 0 10px, transparent 10px 20px); opacity:.5;}
+  .receipt-eyebrow{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:2px;}
+  .eyebrow-label{font-family:'Sora',sans-serif; font-size:11px; font-weight:700; letter-spacing:1.6px; color:var(--accent); text-transform:uppercase;}
+  .eyebrow-status{font-size:11px; color:var(--ink-soft); font-family:'JetBrains Mono',monospace;}
+  .receipt-title{font-family:'Sora',sans-serif; font-weight:800; font-size:22px; margin:2px 0 20px; color:var(--ink);}
+  .field{margin-bottom:18px;}
+  .field-label{font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+  .field-label .num{width:18px;height:18px;border-radius:6px; background:var(--accent-soft);color:var(--accent); font-size:11px;font-weight:700; display:flex;align-items:center;justify-content:center; font-family:'JetBrains Mono',monospace;}
+
+  .name-row{display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid var(--line); border-radius:var(--radius-md); padding:4px 4px 4px 16px; transition:border-color .15s, box-shadow .15s;}
+  .name-row:focus-within{border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft);}
+  .name-row input{flex:1; border:none; outline:none; padding:12px 0; font-size:16px; font-weight:500; background:transparent; color:var(--ink); font-family:'Inter',sans-serif;}
+  .name-row input::placeholder{color:#B9BDC7;}
+  .mic-btn{flex-shrink:0; width:42px;height:42px; border-radius:12px; border:none; background:var(--bg-1); color:#fff; display:flex;align-items:center;justify-content:center; cursor:pointer; transition:background .15s, transform .1s;}
+  .mic-btn:active{transform:scale(.93);}
+  .mic-btn.listening{background:var(--bad); animation:pulse 1.1s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.5);}70%{box-shadow:0 0 0 10px rgba(220,38,38,0);}100%{box-shadow:0 0 0 0 rgba(220,38,38,0);}}
+  .mic-btn svg{width:18px;height:18px;}
+  .field-hint{font-size:11.5px; color:var(--ink-soft); margin-top:7px; line-height:1.45;}
+
+  .nominal-display{background:linear-gradient(135deg,#0F1424,#1A2138); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;}
+  .nominal-display .prefix{font-family:'JetBrains Mono',monospace; color:#8B93B8; font-size:13px; font-weight:700; margin-right:6px;}
+  .nominal-display input{flex:1; background:transparent; border:none; outline:none; color:#fff; font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; text-align:right; letter-spacing:.5px;}
+  .nominal-display input::placeholder{color:#4C5470;}
+  .chip-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  @media (max-width:360px){.chip-grid{grid-template-columns:repeat(3,1fr);}}
+  .chip{border:1.5px solid var(--line); background:#fff; border-radius:11px; padding:10px 4px; font-size:13px; font-weight:700; color:var(--ink); cursor:pointer; text-align:center; font-family:'JetBrains Mono',monospace; transition:all .12s;}
+  .chip:active{transform:scale(.95);}
+  .chip.active{background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:0 6px 14px -4px rgba(79,70,229,.6);}
+
+  .bank-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  .bank-btn{position:relative; border:none; border-radius:var(--radius-md); padding:16px 10px; color:#fff; font-family:'Sora',sans-serif; font-weight:700; font-size:14.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; min-height:54px; opacity:.92; transition:transform .12s, opacity .12s, box-shadow .12s; box-shadow:0 6px 14px -6px rgba(0,0,0,.35);}
+  .bank-btn:active{transform:scale(.96);}
+  .bank-btn.selected{opacity:1; outline:2.5px solid var(--ink); outline-offset:2px; box-shadow:0 10px 20px -6px rgba(0,0,0,.45);}
+  .bank-btn .check{position:absolute; top:6px;right:7px; width:16px;height:16px; display:none; color:#fff;}
+  .bank-btn.selected .check{display:block;}
+  .bank-bca{background:var(--bca);} .bank-bri{background:var(--bri);} .bank-bni{background:var(--bni);}
+  .bank-mandiri{background:linear-gradient(135deg,var(--mandiri),#02549e); border-bottom:3px solid var(--mandiri-gold);}
+  .bank-bsi{background:var(--bsi);} .bank-jago{background:var(--jago);}
+
+  .submit-btn{width:100%; margin-top:22px; border:none; border-radius:var(--radius-md); padding:17px; background:var(--ink); color:#fff; font-family:'Sora',sans-serif; font-weight:700; font-size:15.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform .12s, background .15s, opacity .15s;}
+  .submit-btn:active{transform:scale(.98);}
+  .submit-btn:disabled{background:#D1D5DB; color:#9CA3AF; cursor:not-allowed;}
+  .submit-btn.loading{opacity:.75;}
+  .spinner{width:16px;height:16px; border:2.5px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:none;}
+  .submit-btn.loading .spinner{display:inline-block;}
+  .submit-btn.loading .btn-label{display:none;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:#fff; padding:13px 20px; border-radius:14px; font-size:14px; font-weight:600; display:flex; align-items:center; gap:10px; box-shadow:0 20px 40px -10px rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:all .25s cubic-bezier(.22,1,.36,1); max-width:90vw; z-index:50;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.success{background:var(--good);} .toast.error{background:var(--bad);}
+  .toast svg{width:18px;height:18px;flex-shrink:0;}
+  .helper-note{text-align:center; font-size:11.5px; color:#7C86AD; margin-top:16px; line-height:1.5;}
+
+  .install-banner{
+    width:100%; max-width:480px; background:var(--accent-soft); border:1.5px solid var(--accent);
+    border-radius:14px; padding:12px 14px; margin-bottom:14px; display:none;
+    align-items:center; justify-content:space-between; gap:10px;
+  }
+  .install-banner.show{display:flex;}
+  .install-banner span{font-size:12.5px; color:var(--accent); font-weight:600;}
+  .install-banner button{border:none; background:var(--accent); color:#fff; padding:8px 14px; border-radius:9px; font-size:12.5px; font-weight:700; cursor:pointer;}
+
+  @media (min-width:480px){.receipt{padding:32px 30px 28px;} .receipt-title{font-size:24px;}}
+</style>
+</head>
+<body>
+
+<div class="lock-overlay" id="lockOverlay">
+  <div class="lock-card">
+    <div class="lock-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V6a3 3 0 0 1 3-3z"/></svg></div>
+    <div class="lock-title">Masukkan Kode Akses</div>
+    <div class="lock-sub">Perangkat ini perlu diverifikasi sekali. Setelah benar, perangkat akan diingat otomatis untuk pemakaian berikutnya.</div>
+    <input type="password" inputmode="numeric" id="kodeInput" class="lock-input" placeholder="Kode Akses" autocomplete="off">
+    <button type="button" class="lock-btn" id="kodeBtn">Buka Form</button>
+    <div class="lock-error" id="kodeError"></div>
+    <div class="lock-note">Hubungi admin kalau belum punya kode akses.</div>
+  </div>
+</div>
+
+<div class="page">
+  <div class="install-banner" id="installBanner">
+    <span>📲 Install aplikasi ini ke layar utama HP kamu</span>
+    <button type="button" id="installBtn">Install</button>
+  </div>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">Rp</div>
+      <div>
+        <div class="brand-text">Setoran Masuk</div>
+        <div class="brand-sub">Pencatatan transfer bank</div>
+        <div class="user-badge"><span class="dot" id="statusDot"></span><span id="userNameBadge">Perangkat terverifikasi</span><button type="button" id="logoutBtn">Keluar</button></div>
+      </div>
+    </div>
+    <div class="clock">
+      <div class="clock-time" id="clockTime">--:--:--</div>
+      <div class="clock-date" id="clockDate">-</div>
+    </div>
+  </div>
+
+  <div class="receipt-wrap">
+    <div class="receipt">
+      <div class="receipt-eyebrow">
+        <span class="eyebrow-label">Slip Digital</span>
+        <span class="eyebrow-status" id="miniClock">--:--</span>
+      </div>
+      <div class="receipt-title">Input Transfer Baru</div>
+
+      <div class="field">
+        <div class="field-label"><span class="num">1</span>Nama Pengirim</div>
+        <div class="name-row">
+          <input type="text" id="namaInput" placeholder="Ketik atau ucapkan nama..." autocomplete="off">
+          <button type="button" class="mic-btn" id="micBtn" title="Isi dengan suara">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V20H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-2.08A7 7 0 0 0 19 11z"/></svg>
+          </button>
+        </div>
+        <div class="field-hint" id="micHint">🎤 Tap ikon mic lalu ucapkan nama pengirim.</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span class="num">2</span>Nominal Transfer</div>
+        <div class="nominal-display">
+          <span class="prefix">RP</span>
+          <input type="text" inputmode="numeric" id="nominalInput" placeholder="0">
+        </div>
+        <div class="chip-grid" id="chipGrid">
+          <button type="button" class="chip" data-val="1000000">1jt</button>
+          <button type="button" class="chip" data-val="1500000">1,5jt</button>
+          <button type="button" class="chip" data-val="2000000">2jt</button>
+          <button type="button" class="chip" data-val="2500000">2,5jt</button>
+          <button type="button" class="chip" data-val="3000000">3jt</button>
+          <button type="button" class="chip" data-val="4000000">4jt</button>
+          <button type="button" class="chip" data-val="5000000">5jt</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span class="num">3</span>Bank Penerima</div>
+        <div class="bank-grid" id="bankGrid">
+          <button type="button" class="bank-btn bank-bca" data-bank="BCA">BCA<svg class="check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></button>
+          <button type="button" class="bank-btn bank-bri" data-bank="BRI">BRI<svg class="check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></button>
+          <button type="button" class="bank-btn bank-bni" data-bank="BNI">BNI<svg class="check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></button>
+          <button type="button" class="bank-btn bank-mandiri" data-bank="Mandiri">Mandiri<svg class="check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></button>
+          <button type="button" class="bank-btn bank-bsi" data-bank="BSI">BSI<svg class="check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></button>
+          <button type="button" class="bank-btn bank-jago" data-bank="JAGO">JAGO<svg class="check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:4px;">
+        <div class="field-label"><span class="num">4</span>Jam &amp; Tanggal</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-soft);background:#F3F2EF;border-radius:10px;padding:10px 14px;">Tercatat otomatis saat data disimpan</div>
+      </div>
+
+      <button type="button" class="submit-btn" id="submitBtn" disabled>
+        <span class="btn-label">Simpan Data</span>
+        <span class="spinner"></span>
+      </button>
+    </div>
+  </div>
+  <div class="helper-note">Data tersimpan langsung ke Google Sheet.<br>Tap nominal &amp; bank untuk isi cepat.</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============================================================
+  // GANTI URL INI dengan Web App URL hasil deploy Apps Script kamu
+  // (Deploy → Manage deployments → salin URL yang berakhiran /exec)
+  // ============================================================
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyHgt64cbndpIR4XmfB1MaUk1umtmu0EvECk54VnU0jty6NucoyY2jEm6S0jiPdtM_J/exec';
+
+  const STORAGE_KEY = 'transferAppKode';
+  let selectedNominal = null;
+  let selectedBank = null;
+  let currentKode = null;
+
+  const namaInput = document.getElementById('namaInput');
+  const nominalInput = document.getElementById('nominalInput');
+  const submitBtn = document.getElementById('submitBtn');
+  const chipGrid = document.getElementById('chipGrid');
+  const bankGrid = document.getElementById('bankGrid');
+  const toast = document.getElementById('toast');
+  const micBtn = document.getElementById('micBtn');
+  const micHint = document.getElementById('micHint');
+  const lockOverlay = document.getElementById('lockOverlay');
+  const kodeInput = document.getElementById('kodeInput');
+  const kodeBtn = document.getElementById('kodeBtn');
+  const kodeError = document.getElementById('kodeError');
+  const userNameBadge = document.getElementById('userNameBadge');
+  const statusDot = document.getElementById('statusDot');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  // ---------- service worker (installable, cepat dibuka lagi) ----------
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+
+  // ---------- prompt install PWA ----------
+  let deferredPrompt;
+  const installBanner = document.getElementById('installBanner');
+  const installBtn = document.getElementById('installBtn');
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBanner.classList.add('show');
+  });
+  installBtn.addEventListener('click', async () => {
+    installBanner.classList.remove('show');
+    if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; }
+  });
+
+  // ---------- panggil API Apps Script ----------
+  async function callApi(action, extra){
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf('GANTI_DENGAN') === 0) {
+      throw new Error('URL Apps Script belum diisi di index.html');
+    }
+    const body = Object.assign({ action: action }, extra);
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      // text/plain sengaja dipakai supaya browser tidak melakukan CORS preflight
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('Server merespons status ' + res.status);
+    return res.json();
+  }
+
+  // ---------- gerbang kode akses ----------
+  function tryAccess(kode, fromStorage){
+    kodeBtn.disabled = true;
+    kodeError.textContent = '';
+    callApi('checkAccess', { kode: kode })
+      .then((res) => {
+        kodeBtn.disabled = false;
+        if (res && res.success) {
+          currentKode = kode;
+          try { localStorage.setItem(STORAGE_KEY, kode); } catch(e){}
+          userNameBadge.textContent = res.nama || 'Perangkat terverifikasi';
+          statusDot.classList.remove('offline');
+          lockOverlay.style.display = 'none';
+          namaInput.focus();
+        } else if (!fromStorage) {
+          kodeError.textContent = (res && res.error) || 'Kode salah.';
+        } else {
+          try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+        }
+      })
+      .catch((err) => {
+        kodeBtn.disabled = false;
+        if (!fromStorage) kodeError.textContent = 'Gagal memeriksa kode: ' + err.message;
+      });
+  }
+
+  kodeBtn.addEventListener('click', () => {
+    const k = kodeInput.value.trim();
+    if (!k) { kodeError.textContent = 'Isi kode akses dulu.'; return; }
+    tryAccess(k, false);
+  });
+  kodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') kodeBtn.click(); });
+
+  logoutBtn.addEventListener('click', () => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+    currentKode = null;
+    kodeInput.value = '';
+    lockOverlay.style.display = 'flex';
+  });
+
+  (function initAccess(){
+    let saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch(e){}
+    if (saved) tryAccess(saved, true);
+  })();
+
+  // ---------- live clock ----------
+  const hariList = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const bulanList = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  function tickClock(){
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('clockTime').textContent = hh+':'+mm+':'+ss;
+    document.getElementById('miniClock').textContent = hh+':'+mm;
+    document.getElementById('clockDate').textContent = hariList[now.getDay()] + ', ' + now.getDate() + ' ' + bulanList[now.getMonth()] + ' ' + now.getFullYear();
+  }
+  tickClock(); setInterval(tickClock, 1000);
+
+  // ---------- nominal chips ----------
+  chipGrid.addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedNominal = Number(chip.dataset.val);
+    nominalInput.value = selectedNominal.toLocaleString('id-ID');
+    validate();
+  });
+  nominalInput.addEventListener('input', () => {
+    const raw = nominalInput.value.replace(/[^0-9]/g, '');
+    selectedNominal = raw ? Number(raw) : null;
+    nominalInput.value = raw ? Number(raw).toLocaleString('id-ID') : '';
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.chip').forEach(c => { if (Number(c.dataset.val) === selectedNominal) c.classList.add('active'); });
+    validate();
+  });
+
+  // ---------- bank ----------
+  bankGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.bank-btn');
+    if (!btn) return;
+    document.querySelectorAll('.bank-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedBank = btn.dataset.bank;
+    validate();
+  });
+
+  namaInput.addEventListener('input', validate);
+  function validate(){
+    const ok = namaInput.value.trim().length > 0 && selectedNominal > 0 && !!selectedBank;
+    submitBtn.disabled = !ok;
+  }
+
+  // ---------- voice input (jalur ini benar-benar berfungsi karena di luar sandbox Apps Script) ----------
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'id-ID';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    let listening = false;
+
+    const errorMessages = {
+      'not-allowed': 'Izin mikrofon ditolak. Buka pengaturan browser dan izinkan mikrofon untuk situs ini.',
+      'service-not-allowed': 'Layanan suara diblokir browser.',
+      'no-speech': 'Tidak ada suara terdeteksi. Coba lagi lebih dekat ke mikrofon.',
+      'network': 'Koneksi suara gagal. Periksa internet lalu coba lagi.',
+      'audio-capture': 'Mikrofon tidak ditemukan di perangkat ini.'
+    };
+
+    micBtn.addEventListener('click', async () => {
+      if (listening) { recognition.stop(); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+      } catch (permErr) {
+        showToast('Izinkan akses mikrofon di browser untuk pakai fitur ini.', 'error');
+        return;
+      }
+      try { recognition.start(); listening = true; micBtn.classList.add('listening'); }
+      catch (e) { /* sudah berjalan */ }
+    });
+
+    recognition.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      const cap = text.replace(/\S+/g, t => t.charAt(0).toUpperCase() + t.substr(1).toLowerCase());
+      namaInput.value = cap;
+      validate();
+    };
+    recognition.onerror = (event) => {
+      listening = false; micBtn.classList.remove('listening');
+      showToast(errorMessages[event.error] || 'Input suara gagal, coba lagi.', 'error');
+    };
+    recognition.onend = () => { listening = false; micBtn.classList.remove('listening'); };
+  } else {
+    micBtn.style.opacity = '.35';
+    if (isIOS) {
+      micHint.textContent = '🎤 Browser iPhone/iPad belum mendukung dikte web. Pakai ikon mic di keyboard iOS saat mengetik nama.';
+    } else {
+      micHint.textContent = '🎤 Browser ini belum mendukung input suara. Pakai ikon mic di keyboard HP kamu.';
+    }
+  }
+
+  // ---------- toast ----------
+  let toastTimer;
+  function showToast(message, type){
+    clearTimeout(toastTimer);
+    toast.className = 'toast show ' + type;
+    const icon = type === 'success'
+      ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg>';
+    toast.innerHTML = icon + '<span>' + message + '</span>';
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+  }
+
+  function resetForm(){
+    namaInput.value = ''; nominalInput.value = '';
+    selectedNominal = null; selectedBank = null;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.bank-btn').forEach(b => b.classList.remove('selected'));
+    submitBtn.disabled = true;
+    namaInput.focus();
+  }
+
+  submitBtn.addEventListener('click', async () => {
+    if (submitBtn.disabled || !currentKode) return;
+    submitBtn.classList.add('loading');
+    submitBtn.disabled = true;
+    const dataPayload = { nama: namaInput.value.trim(), nominal: selectedNominal, bank: selectedBank };
+    try {
+      const res = await callApi('submit', { kode: currentKode, data: dataPayload });
+      submitBtn.classList.remove('loading');
+      if (res && res.success) {
+        showToast('Tersimpan • ' + dataPayload.nama + ' • Rp' + selectedNominal.toLocaleString('id-ID') + ' • ' + dataPayload.bank, 'success');
+        resetForm();
+      } else {
+        showToast((res && res.error) || 'Gagal menyimpan data.', 'error');
+        submitBtn.disabled = false;
+      }
+    } catch (err) {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+      showToast('Gagal terhubung ke server: ' + err.message, 'error');
+    }
+  });
+
+  window.addEventListener('online', () => statusDot.classList.remove('offline'));
+  window.addEventListener('offline', () => statusDot.classList.add('offline'));
+</script>
+</body>
+</html>
