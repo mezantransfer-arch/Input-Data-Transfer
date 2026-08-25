@@ -1,6 +1,6 @@
 {
   "name": "Input Transfer Bank",
-  "short_name": "Setoran",
+  "short_name": "Mezan Transfer",
   "description": "Pencatatan transfer bank masuk — cepat, tap-tap, dan bisa isi suara",
   "start_url": "./index.html",
   "scope": "./",
