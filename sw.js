@@ -1,4 +1,4 @@
-const CACHE_NAME = 'setoran-app-v1';
+const CACHE_NAME = 'Mezan Tf-app-v1';
 const ASSETS = [
   './',
   './index.html',
