@@ -464,27 +464,104 @@
   }
 
   // =============================================================
-  // VOICE INPUT — interimResults + 5 alternatif + panel pilihan
+  // VOICE INPUT
+  // Strategi akurasi nama:
+  //  1. Rekam pertama pakai id-ID
+  //  2. Jika hasil terdeteksi sebagai kalimat (bukan nama), rekam ulang
+  //     otomatis pakai en-US — lebih netral untuk nama Arab/asing
+  //  3. Koreksi post-processing via kamus fonetik nama umum
+  //  4. interimResults untuk feedback real-time
+  //  5. Panel 5 alternatif untuk pilih kandidat terbaik
   // =============================================================
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  // Bersihkan & Title Case hasil STT
-  function formatNama(raw) {
-    return raw
-      .trim()
-      .replace(/["""''`]/g, '')           // kutip noise
-      .replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ0-9 .'\-]/g, '') // karakter tak lazim
-      .replace(/\s+/g, ' ')
-      .trim()
-      .replace(/\b\w/g, c => c.toUpperCase()); // Title Case
+  // ---------- kamus koreksi fonetik (STT id-ID → nama yang benar) ----------
+  // Engine sering mengubah nama Arab/asing ke kata Indonesia yang bunyinya mirip.
+  // Tambahkan pasangan di sini sesuai nama yang sering masuk ke sistem kamu.
+  const KOREKSI = {
+    // nama Arab umum
+    'ahmad'    : 'Ahmad',    'ahmed'    : 'Ahmed',
+    'muhammad' : 'Muhammad', 'mohamad'  : 'Mohammad', 'mohd'    : 'Mohd',
+    'abdurrahman':'Abdurrahman','abdurrahman':'Abdurrahman',
+    'Abdullah' : 'Abdullah', 'abdulloh' : 'Abdullah',
+    'fatimah'  : 'Fatimah',  'khadijah' : 'Khadijah',
+    'umar'     : 'Umar',     'ali'      : 'Ali',
+    'hasan'    : 'Hasan',    'husain'   : 'Husain',   'husein'  : 'Husein',
+    'ibrahim'  : 'Ibrahim',  'ismail'   : 'Ismail',
+    'yusuf'    : 'Yusuf',    'yahya'    : 'Yahya',
+    'zainab'   : 'Zainab',   'zahra'    : 'Zahra',
+    'nurul'    : 'Nurul',    'nur'      : 'Nur',
+    'aisha'    : 'Aisha',    'aisyah'   : 'Aisyah',
+    'saleh'    : 'Saleh',    'sholeh'   : 'Sholeh',
+    'rizki'    : 'Rizki',    'rezki'    : 'Rezki',
+    'fauzi'    : 'Fauzi',    'fauziah'  : 'Fauziah',
+    'hakim'    : 'Hakim',    'hakeem'   : 'Hakeem',
+    'karim'    : 'Karim',    'rahim'    : 'Rahim',
+    'latif'    : 'Latif',    'lathif'   : 'Lathif',
+    'taufik'   : 'Taufik',   'taufiq'   : 'Taufiq',
+    'khairul'  : 'Khairul',  'khairil'  : 'Khairil',
+    'syaiful'  : 'Syaiful',  'syaifullah':'Syaifullah',
+    'burhanuddin':'Burhanuddin','bahruddin':'Bahruddin',
+    'zulkifli' : 'Zulkifli', 'zulfikar' : 'Zulfikar',
+    // kesalahan fonetik umum id-ID untuk nama
+    'ada'      : null,  // "Ahmad" sering jadi "ada" → tandai sebagai tidak valid
+    'apa'      : null,
+    'atau'     : null,
+    'bisa'     : null,
+    'dan'      : null,
+    'dari'     : null,
+    'ini'      : null,
+    'itu'      : null,
+    'juga'     : null,
+    'kalau'    : null,
+    'karena'   : null,
+    'pada'     : null,
+    'saya'     : null,
+    'sudah'    : null,
+    'yang'     : null,
+  };
+
+  // Kata-kata umum Indonesia — kalau hasil STT mengandung ini,
+  // kemungkinan engine salah mengartikan nama sebagai kalimat
+  const KATA_UMUM_ID = new Set([
+    'ada','apa','atau','bisa','dan','dari','dengan','dia','ini','itu',
+    'juga','kalau','karena','ke','kita','lagi','lain','mau','mereka',
+    'tidak','oleh','pada','sampai','sama','saya','sedang','seperti',
+    'sudah','suka','tapi','tentang','untuk','yang','ya','ya'
+  ]);
+
+  // Cek apakah hasil terlihat seperti kalimat (bukan nama)
+  function terlihatSepertiKalimat(text) {
+    const kata = text.toLowerCase().split(/\s+/);
+    // Lebih dari 4 kata → sangat mungkin kalimat
+    if (kata.length > 4) return true;
+    // Mengandung kata umum Indonesia → kemungkinan salah tangkap
+    const adaKataUmum = kata.some(k => KATA_UMUM_ID.has(k));
+    if (adaKataUmum) return true;
+    return false;
   }
 
-  // Render panel alternatif; hilang otomatis kalau hanya 1 pilihan unik
+  // Post-processing: koreksi fonetik + Title Case
+  function formatNama(raw) {
+    if (!raw) return '';
+    const kata = raw.trim().replace(/\s+/g, ' ').split(' ');
+    const hasil = kata.map(k => {
+      const lower = k.toLowerCase().replace(/[^a-z]/g, '');
+      // Cek kamus; null berarti kata tidak valid untuk nama
+      if (KOREKSI[lower] === null) return '';
+      if (KOREKSI[lower]) return KOREKSI[lower];
+      // Title Case default
+      return k.charAt(0).toUpperCase() + k.slice(1).toLowerCase();
+    }).filter(Boolean);
+    return hasil.join(' ').trim();
+  }
+
+  // ---------- panel alternatif ----------
   function renderAltPanel(transcripts) {
     altPanel.innerHTML = '';
-    const unique = [...new Set(transcripts.map(formatNama).filter(Boolean))];
-    if (unique.length <= 1) return; // tidak perlu panel kalau cuma 1
+    const unique = [...new Set(transcripts.map(formatNama).filter(s => s.length > 0))];
+    if (unique.length <= 1) return;
     unique.forEach((text) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -500,8 +577,8 @@
     });
   }
 
+  // ---------- state tombol mic ----------
   function setMicState(state) {
-    // state: 'idle' | 'listening' | 'done'
     micBtn.classList.remove('listening', 'done');
     micIconMic.style.display  = 'none';
     micIconStop.style.display = 'none';
@@ -517,95 +594,119 @@
   }
 
   if (SpeechRecognition) {
-    const recognition = new SpeechRecognition();
-    recognition.lang           = 'id-ID';
-    recognition.interimResults = true;  // teks muncul real-time saat bicara
-    recognition.maxAlternatives = 5;    // minta 5 kandidat per hasil final
-    recognition.continuous     = false;
+    // Buat DUA instance recognition: satu untuk id-ID, satu untuk en-US
+    // en-US dipakai sebagai fallback untuk nama asing/Arab karena lebih netral
+    function buatRecognition(lang) {
+      const r = new SpeechRecognition();
+      r.lang            = lang;
+      r.interimResults  = true;
+      r.maxAlternatives = 5;
+      r.continuous      = false;
+      return r;
+    }
 
-    let listening = false;
-    let collectedAlts = [];             // kumpulan semua alternatif dari satu sesi
+    const recID = buatRecognition('id-ID');
+    const recEN = buatRecognition('en-US');
+
+    let listening     = false;
+    let collectedAlts = [];
+    let pakaiFallback = false; // true = sedang di sesi fallback en-US
 
     const errMsg = {
-      'not-allowed'       : 'Izin mikrofon ditolak. Buka pengaturan browser → izinkan mikrofon untuk situs ini.',
+      'not-allowed'        : 'Izin mikrofon ditolak. Buka pengaturan browser → izinkan mikrofon.',
       'service-not-allowed': 'Layanan suara diblokir browser.',
-      'no-speech'         : 'Tidak ada suara terdeteksi. Coba lagi lebih dekat ke mikrofon.',
-      'network'           : 'Koneksi suara gagal. Periksa internet lalu coba lagi.',
-      'audio-capture'     : 'Mikrofon tidak ditemukan di perangkat ini.'
+      'no-speech'          : 'Tidak ada suara. Coba lagi lebih dekat ke mikrofon.',
+      'network'            : 'Koneksi suara gagal. Periksa internet.',
+      'audio-capture'      : 'Mikrofon tidak ditemukan.'
     };
 
-    micBtn.addEventListener('click', async () => {
-      // Tap saat sedang rekam → stop
-      if (listening) { recognition.stop(); return; }
+    function mulaiRekam(lang) {
+      const rec = lang === 'en-US' ? recEN : recID;
+      pakaiFallback = (lang === 'en-US');
+      collectedAlts = [];
+      micInterim.textContent = '';
+      micInterim.classList.remove('show');
+      try { rec.start(); listening = true; setMicState('listening'); }
+      catch (_) {}
+    }
 
-      // Minta izin mikrofon eksplisit — error langsung jelas kalau ditolak
+    function pasangHandler(rec) {
+      rec.onresult = (event) => {
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            for (let j = 0; j < result.length; j++) {
+              collectedAlts.push(result[j].transcript);
+            }
+            const rawBest = result[0].transcript;
+
+            // Jika ini sesi id-ID dan hasilnya terlihat seperti kalimat,
+            // coba ulang otomatis dengan en-US (lebih netral untuk nama asing)
+            if (!pakaiFallback && terlihatSepertiKalimat(rawBest)) {
+              micInterim.textContent = '↩️ Mencoba ulang untuk nama asing…';
+              micInterim.classList.add('show');
+              // rec.onend akan trigger, di sana kita mulai sesi en-US
+              rec._needFallback = true;
+              return;
+            }
+
+            namaInput.value = formatNama(rawBest);
+            micInterim.classList.remove('show');
+            validate();
+          } else {
+            interimText = result[0].transcript;
+          }
+        }
+        if (interimText) {
+          micInterim.textContent = '🎤 ' + interimText + '…';
+          micInterim.classList.add('show');
+        }
+      };
+
+      rec.onend = () => {
+        listening = false;
+        // Fallback otomatis ke en-US jika id-ID hasilnya kalimat
+        if (rec._needFallback) {
+          rec._needFallback = false;
+          setTimeout(() => mulaiRekam('en-US'), 200);
+          return;
+        }
+        setMicState(namaInput.value.trim() ? 'done' : 'idle');
+        micInterim.classList.remove('show');
+        renderAltPanel(collectedAlts);
+        setTimeout(() => setMicState('idle'), 2000);
+      };
+
+      rec.onerror = (event) => {
+        listening = false;
+        rec._needFallback = false;
+        setMicState('idle');
+        micInterim.classList.remove('show');
+        showToast(errMsg[event.error] || 'Input suara gagal, coba lagi.', 'error');
+      };
+    }
+
+    pasangHandler(recID);
+    pasangHandler(recEN);
+
+    micBtn.addEventListener('click', async () => {
+      if (listening) {
+        (pakaiFallback ? recEN : recID).stop();
+        return;
+      }
+      altPanel.innerHTML = '';
       try {
         const s = await navigator.mediaDevices.getUserMedia({ audio: true });
         s.getTracks().forEach(t => t.stop());
       } catch (_) {
-        showToast('Izinkan akses mikrofon di pengaturan browser.', 'error'); return;
+        showToast('Izinkan akses mikrofon di pengaturan browser.', 'error');
+        return;
       }
-
-      // Reset state sebelum mulai
-      altPanel.innerHTML = '';
-      micInterim.textContent = '';
-      micInterim.classList.remove('show');
-      collectedAlts = [];
-
-      try {
-        recognition.start();
-        listening = true;
-        setMicState('listening');
-      } catch (_) { /* sudah berjalan */ }
+      mulaiRekam('id-ID'); // selalu mulai dengan id-ID dulu
     });
 
-    recognition.onresult = (event) => {
-      let interimText = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-
-        if (result.isFinal) {
-          // Kumpulkan semua kandidat dari hasil final ini
-          for (let j = 0; j < result.length; j++) {
-            collectedAlts.push(result[j].transcript);
-          }
-          // Tulis kandidat terbaik (index 0 = confidence tertinggi) ke input
-          const best = formatNama(result[0].transcript);
-          namaInput.value = best;
-          micInterim.classList.remove('show');
-          validate();
-        } else {
-          // Tampilkan teks interim sementara di bawah kolom nama
-          interimText = result[0].transcript;
-        }
-      }
-
-      if (interimText) {
-        micInterim.textContent = '🎤 ' + interimText + '…';
-        micInterim.classList.add('show');
-      }
-    };
-
-    recognition.onend = () => {
-      listening = false;
-      setMicState(namaInput.value.trim() ? 'done' : 'idle');
-      micInterim.classList.remove('show');
-      // Tampilkan panel alternatif kalau ada lebih dari 1 pilihan unik
-      renderAltPanel(collectedAlts);
-      // Kembali ke idle setelah 2 detik (visual feedback singkat)
-      setTimeout(() => setMicState('idle'), 2000);
-    };
-
-    recognition.onerror = (event) => {
-      listening = false;
-      setMicState('idle');
-      micInterim.classList.remove('show');
-      showToast(errMsg[event.error] || 'Input suara gagal, coba lagi.', 'error');
-    };
-
   } else {
-    // Browser tidak mendukung
     micBtn.style.opacity = '.35';
     micBtn.title = 'Tidak didukung di browser ini';
     micHint.textContent = isIOS
