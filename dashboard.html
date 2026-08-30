@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Dashboard Transfer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0F1117; --surface:#1A1F2E; --surface2:#222840; --border:#2A3045;
+  --text:#F0F2F8; --text2:#8892B0; --text3:#4A5568;
+  --accent:#4F46E5; --accent-soft:rgba(79,70,229,.12);
+  --good:#10B981; --good-soft:rgba(16,185,129,.1);
+  --bad:#EF4444; --bad-soft:rgba(239,68,68,.1);
+  --warn:#F59E0B;
+  --bca:#0A63C9; --bri:#00417A; --bni:#F36F21;
+  --mandiri:#003D79; --bsi:#00A39D; --jago:#7C3AED;
+  --radius:14px; --radius-sm:9px;
+  --shadow:0 4px 24px rgba(0,0,0,.35);
+}
+html,body{
+  min-height:100vh; background:var(--bg);
+  font-family:'Inter',system-ui,sans-serif; color:var(--text);
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ===== LOCK ===== */
+.lock{
+  position:fixed;inset:0;z-index:200;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.lock-card{
+  width:100%;max-width:360px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;padding:32px 28px;text-align:center;
+  box-shadow:var(--shadow);
+}
+.lock-card h2{font-family:'Sora',sans-serif;font-size:18px;margin-bottom:6px;}
+.lock-card p{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5;}
+.lock-input{
+  width:100%;background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;font-size:16px;
+  font-family:'JetBrains Mono',monospace;text-align:center;
+  color:var(--text);outline:none;margin-bottom:12px;letter-spacing:1px;
+  transition:border-color .15s;
+}
+.lock-input:focus{border-color:var(--accent);}
+.lock-btn{
+  width:100%;border:none;border-radius:10px;padding:13px;
+  background:var(--accent);color:#fff;font-family:'Sora',sans-serif;
+  font-weight:700;font-size:14px;cursor:pointer;transition:opacity .15s;
+}
+.lock-btn:disabled{opacity:.5;}
+.lock-err{color:var(--bad);font-size:12px;margin-top:8px;min-height:16px;}
+
+/* ===== LAYOUT ===== */
+.app{display:flex;flex-direction:column;min-height:100vh;}
+
+/* ===== TOPBAR ===== */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(15,17,23,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;height:60px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.logo{
+  width:32px;height:32px;border-radius:9px;
+  background:linear-gradient(135deg,var(--accent),#8B5CF6);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Sora',sans-serif;font-weight:800;font-size:13px;color:#fff;
+}
+.topbar-title{font-family:'Sora',sans-serif;font-weight:700;font-size:15px;}
+.topbar-sub{font-size:11px;color:var(--text2);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.btn-icon{
+  width:34px;height:34px;border-radius:8px;border:none;
+  background:var(--surface);color:var(--text2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:background .15s,color .15s;
+}
+.btn-icon:hover{background:var(--surface2);color:var(--text);}
+.btn-icon svg{width:16px;height:16px;}
+.user-info{font-size:11px;color:var(--text2);text-align:right;display:none;}
+@media(min-width:640px){.user-info{display:block;}}
+
+/* ===== MAIN ===== */
+main{flex:1;padding:20px;max-width:1400px;width:100%;margin:0 auto;}
+
+/* ===== STAT CARDS ===== */
+.stats{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;margin-bottom:20px;
+}
+@media(min-width:640px){.stats{grid-template-columns:repeat(3,1fr);}}
+@media(min-width:1024px){.stats{grid-template-columns:repeat(6,1fr);}}
+
+.stat{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 16px;
+  position:relative;overflow:hidden;
+}
+.stat::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--c, var(--accent));
+}
+.stat-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;}
+.stat-sub{font-size:11px;color:var(--text2);margin-top:3px;}
+
+/* ===== TOOLBAR ===== */
+.toolbar{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  margin-bottom:16px;
+}
+.search-wrap{
+  flex:1;min-width:180px;
+  position:relative;
+}
+.search-wrap svg{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  width:15px;height:15px;color:var(--text3);pointer-events:none;
+}
+.search-input{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:9px 12px 9px 36px;
+  font-size:14px;color:var(--text);outline:none;transition:border-color .15s;
+  font-family:'Inter',sans-serif;
+}
+.search-input:focus{border-color:var(--accent);}
+.search-input::placeholder{color:var(--text3);}
+
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;}
+.filter-select,.date-input{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:9px 12px;
+  font-size:13px;color:var(--text);outline:none;cursor:pointer;
+  transition:border-color .15s;font-family:'Inter',sans-serif;
+  -webkit-appearance:none;
+}
+.filter-select:focus,.date-input:focus{border-color:var(--accent);}
+.date-input{min-width:130px;}
+.filter-select option{background:var(--surface2);}
+
+.btn-clear{
+  border:1px solid var(--border);background:transparent;
+  border-radius:var(--radius-sm);padding:9px 14px;
+  font-size:13px;color:var(--text2);cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+  font-family:'Inter',sans-serif;
+}
+.btn-clear:hover{border-color:var(--bad);color:var(--bad);}
+
+.toolbar-right{display:flex;gap:8px;align-items:center;margin-left:auto;}
+.btn-refresh{
+  border:1px solid var(--border);background:transparent;
+  border-radius:var(--radius-sm);padding:9px 14px;
+  font-size:13px;color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  transition:all .15s;font-family:'Inter',sans-serif;
+}
+.btn-refresh:hover{border-color:var(--accent);color:var(--accent);}
+.btn-refresh svg{width:14px;height:14px;}
+.btn-refresh.spinning svg{animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ===== BANK TABS ===== */
+.bank-tabs{
+  display:flex;gap:6px;overflow-x:auto;
+  margin-bottom:16px;padding-bottom:2px;
+  scrollbar-width:none;
+}
+.bank-tabs::-webkit-scrollbar{display:none;}
+.bank-tab{
+  border:none;border-radius:8px;padding:7px 14px;
+  font-size:12.5px;font-weight:600;cursor:pointer;
+  white-space:nowrap;transition:all .12s;
+  font-family:'Inter',sans-serif;flex-shrink:0;
+  background:var(--surface);color:var(--text2);
+  border:1px solid var(--border);
+}
+.bank-tab.active{color:#fff;border-color:transparent;}
+.bank-tab[data-bank="Semua"].active{background:var(--accent);}
+.bank-tab[data-bank="BCA"].active{background:var(--bca);}
+.bank-tab[data-bank="BRI"].active{background:var(--bri);}
+.bank-tab[data-bank="BNI"].active{background:var(--bni);}
+.bank-tab[data-bank="Mandiri"].active{background:var(--mandiri);}
+.bank-tab[data-bank="BSI"].active{background:var(--bsi);}
+.bank-tab[data-bank="JAGO"].active{background:var(--jago);}
+
+/* ===== TABLE WRAPPER ===== */
+.table-wrap{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+}
+.table-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 18px;border-bottom:1px solid var(--border);
+}
+.table-head-title{font-size:13px;font-weight:600;color:var(--text2);}
+.result-count{font-size:12px;color:var(--text3);}
+
+/* scroll container */
+.table-scroll{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;min-width:680px;}
+thead tr{background:var(--surface2);}
+thead th{
+  padding:11px 16px;text-align:left;
+  font-size:11px;font-weight:700;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.7px;
+  white-space:nowrap;
+}
+tbody tr{
+  border-top:1px solid var(--border);
+  transition:background .1s;
+}
+tbody tr:hover{background:var(--surface2);}
+tbody td{
+  padding:13px 16px;font-size:13.5px;
+  vertical-align:middle;
+}
+
+/* bank badge */
+.bank-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:3px 10px;border-radius:6px;
+  font-size:11.5px;font-weight:700;color:#fff;
+  font-family:'Sora',sans-serif;white-space:nowrap;
+}
+.bank-BCA{background:var(--bca);}
+.bank-BRI{background:var(--bri);}
+.bank-BNI{background:var(--bni);}
+.bank-Mandiri{background:var(--mandiri);}
+.bank-BSI{background:var(--bsi);}
+.bank-JAGO{background:var(--jago);}
+
+/* nominal */
+.nominal{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;}
+
+/* aksi tombol */
+.td-aksi{display:flex;gap:6px;align-items:center;}
+.btn-edit,.btn-del{
+  width:30px;height:30px;border-radius:7px;border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .12s;flex-shrink:0;
+}
+.btn-edit{background:var(--accent-soft);color:var(--accent);}
+.btn-edit:hover{background:var(--accent);color:#fff;}
+.btn-del{background:var(--bad-soft);color:var(--bad);}
+.btn-del:hover{background:var(--bad);color:#fff;}
+.btn-edit svg,.btn-del svg{width:14px;height:14px;pointer-events:none;}
+
+/* empty state */
+.empty{
+  text-align:center;padding:48px 20px;
+  color:var(--text3);font-size:14px;
+}
+.empty svg{width:40px;height:40px;margin:0 auto 12px;display:block;opacity:.3;}
+
+/* ===== PAGINATION ===== */
+.pagination{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;border-top:1px solid var(--border);
+  flex-wrap:wrap;gap:10px;
+}
+.page-info{font-size:12px;color:var(--text2);}
+.page-btns{display:flex;gap:4px;}
+.page-btn{
+  min-width:32px;height:32px;padding:0 8px;
+  border-radius:7px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);
+  font-size:13px;cursor:pointer;transition:all .12s;
+  display:flex;align-items:center;justify-content:center;
+}
+.page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.page-btn:disabled{opacity:.3;cursor:default;}
+
+/* ===== MODAL EDIT ===== */
+.modal-overlay{
+  position:fixed;inset:0;z-index:150;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;width:100%;max-width:440px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;border-bottom:1px solid var(--border);
+}
+.modal-head h3{font-family:'Sora',sans-serif;font-size:16px;font-weight:700;}
+.modal-close{
+  width:30px;height:30px;border-radius:8px;border:none;
+  background:var(--surface2);color:var(--text2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.modal-close svg{width:15px;height:15px;}
+.modal-body{padding:22px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:7px;letter-spacing:.3px;}
+.field input,.field select{
+  width:100%;background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;padding:11px 14px;font-size:15px;
+  color:var(--text);outline:none;font-family:'Inter',sans-serif;
+  transition:border-color .15s;
+}
+.field input:focus,.field select:focus{border-color:var(--accent);}
+.field select option{background:var(--surface2);}
+.field-nominal{position:relative;}
+.field-nominal .prefix{
+  position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text2);
+  font-weight:700;pointer-events:none;
+}
+.field-nominal input{padding-left:44px;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;}
+.modal-foot{
+  display:flex;gap:10px;padding:0 22px 22px;
+}
+.btn-cancel{
+  flex:1;border:1px solid var(--border);border-radius:10px;padding:12px;
+  background:transparent;color:var(--text2);font-family:'Sora',sans-serif;
+  font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;
+}
+.btn-cancel:hover{border-color:var(--text2);color:var(--text);}
+.btn-save{
+  flex:2;border:none;border-radius:10px;padding:12px;
+  background:var(--accent);color:#fff;font-family:'Sora',sans-serif;
+  font-weight:700;font-size:14px;cursor:pointer;transition:opacity .15s;
+}
+.btn-save:disabled{opacity:.5;}
+
+/* ===== TOAST ===== */
+.toast{
+  position:fixed;left:50%;bottom:24px;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:11px 18px;border-radius:12px;
+  font-size:13.5px;font-weight:600;
+  display:flex;align-items:center;gap:9px;
+  box-shadow:var(--shadow);opacity:0;pointer-events:none;
+  transition:all .25s cubic-bezier(.22,1,.36,1);max-width:90vw;z-index:300;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--good);color:var(--good);}
+.toast.err{border-color:var(--bad);color:var(--bad);}
+.toast svg{width:16px;height:16px;flex-shrink:0;}
+
+/* ===== SKELETON ===== */
+.skeleton{
+  background:linear-gradient(90deg,var(--surface) 25%,var(--surface2) 50%,var(--surface) 75%);
+  background-size:200% 100%;animation:shimmer 1.4s infinite;
+  border-radius:6px;height:14px;
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:640px){
+  main{padding:14px 12px;}
+  .stats{gap:8px;}
+  .stat{padding:12px 13px;}
+  .stat-val{font-size:16px;}
+  .topbar{padding:0 14px;}
+  thead th:nth-child(2),
+  tbody td:nth-child(2){display:none;} /* sembunyikan kolom Jam di mobile */
+}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div class="lock" id="lockScreen">
+  <div class="lock-card">
+    <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#4F46E5,#8B5CF6);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V6a3 3 0 0 1 3-3zm0 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
+    </div>
+    <h2>Dashboard Transfer</h2>
+    <p>Masukkan kode akses untuk melihat data.</p>
+    <input type="password" inputmode="numeric" id="lockInput" class="lock-input" placeholder="Kode Akses" autocomplete="off">
+    <button type="button" class="lock-btn" id="lockBtn">Masuk</button>
+    <div class="lock-err" id="lockErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appWrap" style="display:none;">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">Rp</div>
+      <div>
+        <div class="topbar-title">Dashboard Transfer</div>
+        <div class="topbar-sub" id="lastUpdate">Memuat data…</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-info">
+        <div style="font-weight:600;" id="userLabel">-</div>
+        <div>Operator aktif</div>
+      </div>
+      <button class="btn-icon" id="logoutBtn" title="Keluar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- STAT CARDS -->
+    <div class="stats" id="statsGrid">
+      <!-- diisi JS -->
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="Cari nama pengirim…">
+      </div>
+      <div class="filter-row">
+        <input type="date" id="dateFrom" class="date-input" title="Dari tanggal">
+        <input type="date" id="dateTo" class="date-input" title="Sampai tanggal">
+        <button type="button" class="btn-clear" id="clearFilter">Reset</button>
+      </div>
+      <div class="toolbar-right">
+        <button type="button" class="btn-refresh" id="refreshBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- BANK TABS -->
+    <div class="bank-tabs" id="bankTabs">
+      <button class="bank-tab active" data-bank="Semua">Semua</button>
+      <button class="bank-tab" data-bank="BCA">BCA</button>
+      <button class="bank-tab" data-bank="BRI">BRI</button>
+      <button class="bank-tab" data-bank="BNI">BNI</button>
+      <button class="bank-tab" data-bank="Mandiri">Mandiri</button>
+      <button class="bank-tab" data-bank="BSI">BSI</button>
+      <button class="bank-tab" data-bank="JAGO">JAGO</button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <div class="table-head">
+        <div class="table-head-title">Data Transfer</div>
+        <div class="result-count" id="resultCount">-</div>
+      </div>
+      <div class="table-scroll">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Jam</th>
+              <th>Nama Pengirim</th>
+              <th>Bank</th>
+              <th style="text-align:right;">Nominal</th>
+              <th>Operator</th>
+              <th style="text-align:center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- skeleton awal -->
+            <tr><td colspan="7"><div style="padding:20px 0;">
+              <div class="skeleton" style="width:60%;margin:8px 16px;"></div>
+              <div class="skeleton" style="width:80%;margin:8px 16px;"></div>
+              <div class="skeleton" style="width:50%;margin:8px 16px;"></div>
+            </div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL EDIT -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Edit Data Transfer</h3>
+      <button class="modal-close" id="modalClose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;padding:8px 12px;background:var(--bg);border-radius:8px;">
+        📅 <span id="editDateTime">-</span>
+      </div>
+      <div class="field">
+        <label>NAMA PENGIRIM</label>
+        <input type="text" id="editNama" placeholder="Nama pengirim">
+      </div>
+      <div class="field field-nominal">
+        <label>NOMINAL</label>
+        <span class="prefix">Rp</span>
+        <input type="text" inputmode="numeric" id="editNominal" placeholder="0">
+      </div>
+      <div class="field">
+        <label>BANK PENERIMA</label>
+        <select id="editBank">
+          <option value="BCA">BCA</option>
+          <option value="BRI">BRI</option>
+          <option value="BNI">BNI</option>
+          <option value="Mandiri">Mandiri</option>
+          <option value="BSI">BSI</option>
+          <option value="JAGO">JAGO</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" id="btnCancel">Batal</button>
+      <button class="btn-save" id="btnSave">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// GANTI URL INI
+// ============================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbyHgt64cbndpIR4XmfB1MaUk1umtmu0EvECk54VnU0jty6NucoyY2jEm6S0jiPdtM_J/exec';
+
+const STORAGE_KEY = 'dashboardKode';
+const PAGE_SIZE = 25;
+
+let kode = null;
+let userName = '';
+let allData = [];       // data mentah dari server
+let filtered = [];      // data setelah filter/search
+let currentPage = 1;
+let activeBank = 'Semua';
+let editingRow = null;  // {rowIndex, ...}
+
+// ---- elemen ----
+const lockScreen   = document.getElementById('lockScreen');
+const lockInput    = document.getElementById('lockInput');
+const lockBtn      = document.getElementById('lockBtn');
+const lockErr      = document.getElementById('lockErr');
+const appWrap      = document.getElementById('appWrap');
+const statsGrid    = document.getElementById('statsGrid');
+const searchInput  = document.getElementById('searchInput');
+const dateFrom     = document.getElementById('dateFrom');
+const dateTo       = document.getElementById('dateTo');
+const clearFilter  = document.getElementById('clearFilter');
+const refreshBtn   = document.getElementById('refreshBtn');
+const bankTabs     = document.getElementById('bankTabs');
+const tableBody    = document.getElementById('tableBody');
+const resultCount  = document.getElementById('resultCount');
+const pagination   = document.getElementById('pagination');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalClose   = document.getElementById('modalClose');
+const btnCancel    = document.getElementById('btnCancel');
+const btnSave      = document.getElementById('btnSave');
+const editNama     = document.getElementById('editNama');
+const editNominal  = document.getElementById('editNominal');
+const editBank     = document.getElementById('editBank');
+const editDateTime = document.getElementById('editDateTime');
+const lastUpdate   = document.getElementById('lastUpdate');
+const userLabel    = document.getElementById('userLabel');
+const logoutBtn    = document.getElementById('logoutBtn');
+const toast        = document.getElementById('toast');
+
+// ============================================================
+// API
+// ============================================================
+async function api(action, extra = {}) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, kode, ...extra })
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+// ============================================================
+// LOCK / AUTH
+// ============================================================
+async function tryLogin(k, fromStorage) {
+  lockBtn.disabled = true; lockErr.textContent = '';
+  try {
+    const res = await api('checkAccess', { kode: k });
+    lockBtn.disabled = false;
+    if (res.success) {
+      kode = k; userName = res.nama || '';
+      try { localStorage.setItem(STORAGE_KEY, k); } catch(e) {}
+      lockScreen.style.display = 'none';
+      appWrap.style.display = 'flex';
+      userLabel.textContent = userName;
+      loadData();
+    } else if (!fromStorage) {
+      lockErr.textContent = res.error || 'Kode salah.';
+    } else {
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    }
+  } catch(err) {
+    lockBtn.disabled = false;
+    if (!fromStorage) lockErr.textContent = 'Gagal: ' + err.message;
+  }
+}
+
+lockBtn.addEventListener('click', () => {
+  const k = lockInput.value.trim();
+  if (!k) { lockErr.textContent = 'Isi kode akses.'; return; }
+  tryLogin(k, false);
+});
+lockInput.addEventListener('keydown', e => { if (e.key === 'Enter') lockBtn.click(); });
+
+logoutBtn.addEventListener('click', () => {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+  kode = null; allData = []; filtered = [];
+  lockInput.value = ''; lockScreen.style.display = '';
+  appWrap.style.display = 'none';
+});
+
+// Auto-login
+(function() {
+  let saved = null;
+  try { saved = localStorage.getItem(STORAGE_KEY); } catch(e) {}
+  if (saved) tryLogin(saved, true);
+})();
+
+// ============================================================
+// LOAD DATA
+// ============================================================
+async function loadData() {
+  refreshBtn.classList.add('spinning');
+  try {
+    const res = await api('getData');
+    if (!res.success) { showToast(res.error || 'Gagal memuat data.', 'err'); return; }
+    allData = res.data || [];
+    // urutkan terbaru dulu (tanggal desc, jam desc)
+    allData.sort((a, b) => {
+      const da = parseTanggal(a.tanggal) + ' ' + a.jam;
+      const db = parseTanggal(b.tanggal) + ' ' + b.jam;
+      return db.localeCompare(da);
+    });
+    const now = new Date();
+    lastUpdate.textContent = 'Update: ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+    renderStats();
+    applyFilter();
+  } catch(err) {
+    showToast('Gagal terhubung: ' + err.message, 'err');
+  } finally {
+    refreshBtn.classList.remove('spinning');
+  }
+}
+
+// ============================================================
+// PARSE TANGGAL dd/MM/yyyy → yyyy-MM-dd (untuk sort & filter)
+// ============================================================
+function parseTanggal(str) {
+  if (!str) return '';
+  const parts = String(str).split('/');
+  if (parts.length === 3) return parts[2] + '-' + parts[1] + '-' + parts[0];
+  return str;
+}
+
+// ============================================================
+// STATS
+// ============================================================
+const BANK_COLOR = { BCA:'--bca', BRI:'--bri', BNI:'--bni', Mandiri:'--mandiri', BSI:'--bsi', JAGO:'--jago' };
+
+function renderStats() {
+  const banks = ['BCA','BRI','BNI','Mandiri','BSI','JAGO'];
+  const today = new Date();
+  const todayStr = String(today.getFullYear()) + '-' +
+    String(today.getMonth()+1).padStart(2,'0') + '-' +
+    String(today.getDate()).padStart(2,'0');
+
+  let html = '';
+  banks.forEach(bank => {
+    const rows = allData.filter(r => r.bank === bank);
+    const todayRows = rows.filter(r => parseTanggal(r.tanggal) === todayStr);
+    const total = rows.reduce((s,r) => s + r.nominal, 0);
+    const todayTotal = todayRows.reduce((s,r) => s + r.nominal, 0);
+    html += `
+      <div class="stat" style="--c:var(${BANK_COLOR[bank]})">
+        <div class="stat-label">${bank}</div>
+        <div class="stat-val">${fmtRp(total)}</div>
+        <div class="stat-sub">${rows.length} transaksi${todayRows.length ? ` · Hari ini ${fmtRp(todayTotal)}` : ''}</div>
+      </div>`;
+  });
+  statsGrid.innerHTML = html;
+}
+
+// ============================================================
+// FILTER & SEARCH
+// ============================================================
+function applyFilter() {
+  const q = searchInput.value.trim().toLowerCase();
+  const from = dateFrom.value;
+  const to = dateTo.value;
+
+  filtered = allData.filter(r => {
+    if (activeBank !== 'Semua' && r.bank !== activeBank) return false;
+    if (q && !r.nama.toLowerCase().includes(q)) return false;
+    const tgl = parseTanggal(r.tanggal);
+    if (from && tgl < from) return false;
+    if (to && tgl > to) return false;
+    return true;
+  });
+
+  currentPage = 1;
+  renderTable();
+}
+
+searchInput.addEventListener('input', applyFilter);
+dateFrom.addEventListener('change', applyFilter);
+dateTo.addEventListener('change', applyFilter);
+clearFilter.addEventListener('click', () => {
+  searchInput.value = ''; dateFrom.value = ''; dateTo.value = '';
+  activeBank = 'Semua';
+  document.querySelectorAll('.bank-tab').forEach(t => t.classList.toggle('active', t.dataset.bank === 'Semua'));
+  applyFilter();
+});
+refreshBtn.addEventListener('click', loadData);
+
+// bank tabs
+bankTabs.addEventListener('click', e => {
+  const tab = e.target.closest('.bank-tab');
+  if (!tab) return;
+  activeBank = tab.dataset.bank;
+  document.querySelectorAll('.bank-tab').forEach(t => t.classList.toggle('active', t === tab));
+  applyFilter();
+});
+
+// ============================================================
+// RENDER TABLE
+// ============================================================
+function fmtRp(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(n%1e9?1:0) + 'M';
+  if (n >= 1e6) return (n/1e6).toFixed(n%1e6?1:0) + 'jt';
+  if (n >= 1e3) return (n/1e3).toFixed(n%1e3?1:0) + 'rb';
+  return String(n);
+}
+function fmtNominal(n) {
+  return new Intl.NumberFormat('id-ID').format(n);
+}
+
+function renderTable() {
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  currentPage = Math.min(currentPage, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filtered.slice(start, start + PAGE_SIZE);
+
+  resultCount.textContent = total + ' transaksi' + (activeBank !== 'Semua' ? ' · ' + activeBank : '');
+
+  if (page.length === 0) {
+    tableBody.innerHTML = `
+      <tr><td colspan="7">
+        <div class="empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/><path d="M8 15s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>
+          </svg>
+          Tidak ada data yang cocok dengan filter.
+        </div>
+      </td></tr>`;
+    pagination.innerHTML = '';
+    return;
+  }
+
+  tableBody.innerHTML = page.map(r => `
+    <tr data-row="${r.rowIndex}">
+      <td style="white-space:nowrap;color:var(--text2);font-size:12.5px;">${r.tanggal}</td>
+      <td style="white-space:nowrap;color:var(--text2);font-size:12px;font-family:'JetBrains Mono',monospace;">${r.jam}</td>
+      <td style="font-weight:600;">${escHtml(r.nama)}</td>
+      <td><span class="bank-badge bank-${escHtml(r.bank)}">${escHtml(r.bank)}</span></td>
+      <td style="text-align:right;"><span class="nominal">Rp ${fmtNominal(r.nominal)}</span></td>
+      <td style="color:var(--text2);font-size:12px;">${escHtml(r.operator)}</td>
+      <td>
+        <div class="td-aksi" style="justify-content:center;">
+          <button class="btn-edit" data-row="${r.rowIndex}" title="Edit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+          </button>
+          <button class="btn-del" data-row="${r.rowIndex}" title="Hapus">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
+
+  renderPagination(totalPages);
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// PAGINATION
+// ============================================================
+function renderPagination(totalPages) {
+  const total = filtered.length;
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, total);
+  let html = `<div class="page-info">${start}–${end} dari ${total}</div><div class="page-btns">`;
+
+  html += `<button class="page-btn" data-p="prev" ${currentPage===1?'disabled':''}>&lsaquo;</button>`;
+
+  // tampilkan maksimal 5 halaman
+  let s = Math.max(1, currentPage - 2);
+  let e2 = Math.min(totalPages, s + 4);
+  s = Math.max(1, e2 - 4);
+  for (let p = s; p <= e2; p++) {
+    html += `<button class="page-btn${p===currentPage?' active':''}" data-p="${p}">${p}</button>`;
+  }
+
+  html += `<button class="page-btn" data-p="next" ${currentPage===totalPages?'disabled':''}>&rsaquo;</button>`;
+  html += '</div>';
+  pagination.innerHTML = html;
+}
+
+pagination.addEventListener('click', e => {
+  const btn = e.target.closest('.page-btn');
+  if (!btn || btn.disabled) return;
+  const p = btn.dataset.p;
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (p === 'prev') currentPage = Math.max(1, currentPage - 1);
+  else if (p === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+  else currentPage = Number(p);
+  renderTable();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// ============================================================
+// EDIT & DELETE (event delegation dari tableBody)
+// ============================================================
+tableBody.addEventListener('click', e => {
+  const editBtn = e.target.closest('.btn-edit');
+  const delBtn  = e.target.closest('.btn-del');
+  if (editBtn) openEdit(Number(editBtn.dataset.row));
+  if (delBtn)  confirmDelete(Number(delBtn.dataset.row));
+});
+
+function openEdit(rowIndex) {
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (!row) return;
+  editingRow = row;
+  editDateTime.textContent = row.tanggal + ' · ' + row.jam;
+  editNama.value = row.nama;
+  editNominal.value = fmtNominal(row.nominal);
+  editBank.value = row.bank;
+  modalOverlay.classList.add('open');
+  editNama.focus();
+}
+
+// format nominal di modal
+editNominal.addEventListener('input', () => {
+  const raw = editNominal.value.replace(/[^0-9]/g, '');
+  editNominal.value = raw ? fmtNominal(Number(raw)) : '';
+});
+
+modalClose.addEventListener('click', closeModal);
+btnCancel.addEventListener('click', closeModal);
+modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+function closeModal() {
+  modalOverlay.classList.remove('open');
+  editingRow = null;
+}
+
+btnSave.addEventListener('click', async () => {
+  if (!editingRow) return;
+  const nama = editNama.value.trim();
+  const nominal = Number(editNominal.value.replace(/[^0-9]/g, ''));
+  const bank = editBank.value;
+  if (!nama || nominal <= 0 || !bank) { showToast('Isi semua field.', 'err'); return; }
+
+  btnSave.disabled = true;
+  try {
+    const res = await api('updateRow', { rowIndex: editingRow.rowIndex, nama, nominal, bank });
+    if (res.success) {
+      // update cache lokal supaya tidak perlu reload penuh
+      const idx = allData.findIndex(r => r.rowIndex === editingRow.rowIndex);
+      if (idx >= 0) { allData[idx].nama = nama; allData[idx].nominal = nominal; allData[idx].bank = bank; }
+      closeModal();
+      renderStats();
+      applyFilter();
+      showToast('Data berhasil diperbarui.', 'ok');
+    } else {
+      showToast(res.error || 'Gagal menyimpan.', 'err');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'err');
+  } finally {
+    btnSave.disabled = false;
+  }
+});
+
+function confirmDelete(rowIndex) {
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (!row) return;
+  const ok = window.confirm(`Hapus data ini?\n\n${row.nama} · Rp ${fmtNominal(row.nominal)} · ${row.bank}\n${row.tanggal} ${row.jam}`);
+  if (!ok) return;
+  doDelete(rowIndex);
+}
+
+async function doDelete(rowIndex) {
+  try {
+    const res = await api('deleteRow', { rowIndex });
+    if (res.success) {
+      // hapus dari cache dan perbaiki rowIndex semua baris di bawahnya
+      const idx = allData.findIndex(r => r.rowIndex === rowIndex);
+      if (idx >= 0) {
+        allData.splice(idx, 1);
+        // shift rowIndex baris yang lebih bawah
+        allData.forEach(r => { if (r.rowIndex > rowIndex) r.rowIndex--; });
+      }
+      renderStats();
+      applyFilter();
+      showToast('Data dihapus.', 'ok');
+    } else {
+      showToast(res.error || 'Gagal menghapus.', 'err');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'err');
+  }
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer;
+function showToast(msg, type) {
+  clearTimeout(toastTimer);
+  const icon = type === 'ok'
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>';
+  toast.className = 'toast show ' + type;
+  toast.innerHTML = icon + '<span>' + msg + '</span>';
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
